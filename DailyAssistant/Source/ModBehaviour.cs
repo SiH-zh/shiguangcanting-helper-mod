@@ -14,8 +14,8 @@ using TMPro;
 
 [assembly: AssemblyTitle("时光餐厅日常助手")]
 [assembly: AssemblyDescription("今日待答题辅助与原版结算打地鼠")]
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.1.1.0")]
+[assembly: AssemblyFileVersion("1.1.1.0")]
 
 namespace DailyAssistant
 {
@@ -41,6 +41,7 @@ namespace DailyAssistant
         private float nextMount;
         private float nextHit;
         private readonly AppearanceDelay appearanceDelay = new AppearanceDelay();
+        private readonly Dictionary<TMP_Text, Color> nativeHintColors = new Dictionary<TMP_Text, Color>();
         private bool originalBackground;
         private bool backgroundOwned;
         private bool stopped;
@@ -82,7 +83,7 @@ namespace DailyAssistant
             EventManager.Register("GUEST_MODE_CHANGE", OnGuest);
             View = gameObject.AddComponent<AssistantView>();
             View.Owner = this;
-            Log("1.1.0已加载；支持独立悬浮答案；地鼠出现2秒后击打；自动打地鼠默认关闭。");
+            Log("1.1.1已加载；原版答题提示使用控件颜色；支持悬浮答案及2秒击打。");
         }
 
         protected override void OnBeforeDeactivate()
@@ -515,14 +516,34 @@ namespace DailyAssistant
 
         internal void ApplyNativeHints(QuizPanel panel)
         {
-            if (panel == null || !Settings.QuizHints) return;
+            if (panel == null) return;
+            RestoreNativeHintColors(panel);
+            if (!Settings.QuizHints) return;
             var list = AccessTools.Field(typeof(QuizPanel), "m_todayQuizzes").GetValue(panel) as List<QuizConstData>;
             int index = (int)AccessTools.Field(typeof(QuizPanel), "m_nLocalIndex").GetValue(panel);
             var texts = AccessTools.Field(typeof(QuizPanel), "m_optionTexts").GetValue(panel) as TMP_Text[];
             if (list == null || texts == null || index < 0 || index >= list.Count || list[index] == null) return;
             var options = list[index].GetOptions();
             for (int i = 0; i < texts.Length && i < options.Count; i++)
-                if (texts[i] != null) texts[i].text = options[i] + (i == list[index].nCorrectIndex ? "  <color=#3C813E>✓ 正确答案</color>" : "");
+            {
+                var text = texts[i];
+                if (text == null) continue;
+                if (!nativeHintColors.ContainsKey(text)) nativeHintColors.Add(text, text.color);
+                bool correct = i == list[index].nCorrectIndex;
+                // 原版选项关闭了富文本解析；直接设置颜色，不向文本中插入任何标签。
+                string marker = text.font != null && text.font.HasCharacter('【') && text.font.HasCharacter('】')
+                    ? "  【正确答案】" : "  (正确答案)";
+                text.text = options[i] + (correct ? marker : "");
+                text.color = correct ? (Color)new Color32(60, 129, 62, 255) : nativeHintColors[text];
+            }
+        }
+
+        private void RestoreNativeHintColors(QuizPanel panel)
+        {
+            foreach (var pair in nativeHintColors)
+                if (pair.Key != null && (panel == null || pair.Key.transform.IsChildOf(panel.transform)))
+                    pair.Key.color = pair.Value;
+            foreach (var dead in nativeHintColors.Keys.Where(x => x == null).ToArray()) nativeHintColors.Remove(dead);
         }
 
         private void RefreshNativeHints()
@@ -538,10 +559,12 @@ namespace DailyAssistant
 
         private void ClearNativeHints()
         {
+            RestoreNativeHintColors(null);
             bool old = Settings.QuizHints;
             Settings.QuizHints = false;
             try { RefreshNativeHints(); } catch { }
             Settings.QuizHints = old;
+            nativeHintColors.Clear();
         }
 
         private void OnLeave() { cancelJob = true; appearanceDelay.Reset(null, Time.time); if (View != null) View.CloseAll(); }

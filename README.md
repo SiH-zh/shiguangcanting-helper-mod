@@ -6,7 +6,7 @@
 
 《时光餐厅》的非官方辅助模组，提供今日待答题与答案提示、答题辅助、地鼠自动击打和收益统计。支持独立悬浮答案。
 
-**当前版本：1.1.0** · [本版下载](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.1.0) · [全部发行版](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases) · [游戏Steam商店](https://store.steampowered.com/app/4399360/?l=schinese) · [MIT许可证中文对照](LICENSE.zh-CN.md)
+**当前版本：1.1.1** · [本版下载](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.1.1) · [全部发行版](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases) · [游戏Steam商店](https://store.steampowered.com/app/4399360/?l=schinese) · [MIT许可证中文对照](LICENSE.zh-CN.md)
 
 ## 功能
 
@@ -49,6 +49,7 @@
 
 | 版本 | 主要变化 |
 | --- | --- |
+| [1.1.1](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.1.1) | 修复答题提示的颜色标签与缺字 |
 | [1.1.0](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.1.0) | 悬浮答案与2秒击打等待 |
 | [1.0.1](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.0.1) | 原创厨师帽地鼠图标 |
 | [1.0](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.0.0) | 首次发布：答题与打地鼠 |
@@ -59,11 +60,11 @@
 
 本项目针对2026年11月5日（北京时间）检查的Windows试玩版程序制作，游戏本地构建编号为`26431062`。游戏更新后相关接口可能变化，不保证兼容所有后续版本或同时修改相同逻辑的其他模组。
 
-原版答题窗口的选项提示可能直接显示颜色标签或缺字方框，1.1.1已修复；独立悬浮答案可用于查看答案。尚无移动速度调整，自动打地鼠每次启动默认关闭。
+尚无移动速度调整；自动打地鼠每次启动默认关闭。此版本修复原版答题提示显示问题，完整界面表现仍应以所用游戏版本的实际运行结果为准。
 
 游戏需保持运行。地鼠自动处理需满足自己的餐厅营业及原版场景条件，电脑休眠或游戏退出后不工作。游戏启用模组对成就或排行榜的处理以游戏自身提示为准。
 
-构建及隔离验证记录见[本版本详情](docs/versions/v1.1.0.md)。验证结果不等同于完整实机覆盖；遇到问题可提交[问题反馈](https://github.com/SiH-zh/shiguangcanting-helper-mod/issues)，附游戏版本、模组版本、操作步骤及相关日志，注意隐藏个人信息。
+构建及隔离验证记录见[本版本详情](docs/versions/v1.1.1.md)。验证结果不等同于完整实机覆盖；遇到问题可提交[问题反馈](https://github.com/SiH-zh/shiguangcanting-helper-mod/issues)，附游戏版本、模组版本、操作步骤及相关日志，注意隐藏个人信息。
 
 ## 源码与编译
 
