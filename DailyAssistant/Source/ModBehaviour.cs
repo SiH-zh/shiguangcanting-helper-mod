@@ -14,8 +14,8 @@ using TMPro;
 
 [assembly: AssemblyTitle("时光餐厅日常助手")]
 [assembly: AssemblyDescription("今日待答题辅助与原版结算打地鼠")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.0.1.0")]
+[assembly: AssemblyFileVersion("1.0.1.0")]
 
 namespace DailyAssistant
 {
@@ -31,6 +31,8 @@ namespace DailyAssistant
         internal string BatchProgress = "";
         private Harmony harmony;
         private GameObject entry;
+        private Texture2D entryTexture;
+        private Sprite entryIcon;
         private Button entryButton;
         private MenuGroupUI mountedMenu;
         private string statePath;
@@ -79,7 +81,7 @@ namespace DailyAssistant
             EventManager.Register("GUEST_MODE_CHANGE", OnGuest);
             View = gameObject.AddComponent<AssistantView>();
             View.Owner = this;
-            Log("1.0.0已加载；自动打地鼠默认关闭。");
+            Log("1.0.1已加载；使用原创厨师帽地鼠图标；自动打地鼠默认关闭。");
         }
 
         protected override void OnBeforeDeactivate()
@@ -96,6 +98,8 @@ namespace DailyAssistant
             EventManager.Unregister("GUEST_MODE_CHANGE", OnGuest);
             if (View != null) { View.Shutdown(); Destroy(View); }
             if (entry != null) Destroy(entry);
+            if (entryIcon != null) Destroy(entryIcon);
+            if (entryTexture != null) Destroy(entryTexture);
             SaveState();
             ClearNativeHints();
             if (Current == this) Current = null;
@@ -159,13 +163,13 @@ namespace DailyAssistant
             if (menu == null) return;
             var original = RestaurantButton.GetValue(menu) as Button;
             if (original == null) return;
+            var icon = LoadEntryIcon();
             entry = Instantiate(original.gameObject, original.transform.parent, false);
             entry.name = "DailyAssistant_Entry";
             entry.transform.SetSiblingIndex(original.transform.GetSiblingIndex());
             entryButton = entry.GetComponent<Button>();
             entryButton.onClick = new Button.ButtonClickedEvent();
             entryButton.onClick.AddListener(delegate { Open(); });
-            var icon = Resources.FindObjectsOfTypeAll<Sprite>().FirstOrDefault(x => x.name == "mission_btn_00");
             var image = entry.GetComponent<Image>();
             var cursor = entry.GetComponent<UICursorHandler>();
             if (cursor != null) Destroy(cursor);
@@ -173,6 +177,7 @@ namespace DailyAssistant
             {
                 image.sprite = icon;
                 image.overrideSprite = null;
+                image.type = Image.Type.Simple;
                 image.preserveAspect = true;
             }
             entry.AddComponent<AssistantHover>();
@@ -181,6 +186,25 @@ namespace DailyAssistant
             mountedMenu = menu;
             LayoutRebuilder.MarkLayoutForRebuild(menu.transform as RectTransform);
             Log("已添加右上角入口。");
+        }
+
+        private Sprite LoadEntryIcon()
+        {
+            if (entryIcon != null) return entryIcon;
+            string path = Path.Combine(Info.szPath, "icon.png");
+            entryTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            entryTexture.name = "日常助手原创图标";
+            if (!ImageConversion.LoadImage(entryTexture, File.ReadAllBytes(path), true))
+            {
+                Destroy(entryTexture);
+                entryTexture = null;
+                throw new InvalidDataException("日常助手图标读取失败，请重新安装完整模组包。");
+            }
+            entryTexture.filterMode = FilterMode.Bilinear;
+            entryTexture.wrapMode = TextureWrapMode.Clamp;
+            entryIcon = Sprite.Create(entryTexture, new Rect(0, 0, entryTexture.width, entryTexture.height), new Vector2(.5f, .5f), 100f);
+            entryIcon.name = "厨师帽地鼠";
+            return entryIcon;
         }
 
         internal void Open()

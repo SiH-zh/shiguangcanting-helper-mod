@@ -8,7 +8,8 @@ if (-not (Test-Path -LiteralPath $compiler)) { throw '找不到系统自带的�
 $refs = @('Assembly-CSharp.dll','0Harmony.dll','Newtonsoft.Json.dll','netstandard.dll',
  'UnityEngine.CoreModule.dll','UnityEngine.UI.dll','Unity.TextMeshPro.dll',
  'UnityEngine.UIModule.dll','UnityEngine.InputLegacyModule.dll','UnityEngine.TextRenderingModule.dll',
- 'UnityEngine.IMGUIModule.dll','UnityEngine.Physics2DModule.dll','UnityEngine.AnimationModule.dll')
+ 'UnityEngine.IMGUIModule.dll','UnityEngine.Physics2DModule.dll','UnityEngine.AnimationModule.dll',
+ 'UnityEngine.ImageConversionModule.dll')
 $arguments = @('/nologo','/target:library','/optimize+','/warn:4','/codepage:65001',
  ('/out:' + (Join-Path $packageRoot 'DailyAssistant.dll')))
 foreach ($ref in $refs) {

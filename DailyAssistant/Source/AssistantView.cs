@@ -150,7 +150,7 @@ namespace DailyAssistant
             panelBlock.transition = Selectable.Transition.None;
             panelBlock.targetGraphic = panel.GetComponent<Image>();
             Label(panel, "日常助手", 34, 30, 700, 54, 34, ink, TextAlignmentOptions.Left);
-            Label(panel, "1.0  ·  今日答题与地鼠小帮手", 36, 86, 740, 32, 19, new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
+            Label(panel, "1.0.1  ·  今日答题与地鼠小帮手", 36, 86, 740, 32, 19, new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
             ActionButton(panel, "关闭", 830, 36, 114, 48, false, Close);
             status = Label(panel, "", 36, 126, 900, 32, 18, ink, TextAlignmentOptions.Left);
             ActionButton(panel, "今日答题", 36, 170, 194, 52, true, delegate { tab = 0; Refresh(); });
