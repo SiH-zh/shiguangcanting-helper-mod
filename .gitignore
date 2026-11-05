@@ -1,0 +1,13 @@
+# 本地构建、临时文件、依赖和用户数据
+.vs/
+.vscode/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.pdb
+*.log
+*.tmp
+UserData/
+work/
+*.zip
