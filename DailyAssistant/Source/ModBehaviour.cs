@@ -14,8 +14,8 @@ using TMPro;
 
 [assembly: AssemblyTitle("时光餐厅日常助手")]
 [assembly: AssemblyDescription("今日待答题辅助与原版结算打地鼠")]
-[assembly: AssemblyVersion("1.1.1.0")]
-[assembly: AssemblyFileVersion("1.1.1.0")]
+[assembly: AssemblyVersion("1.2.0.0")]
+[assembly: AssemblyFileVersion("1.2.0.0")]
 
 namespace DailyAssistant
 {
@@ -25,6 +25,7 @@ namespace DailyAssistant
         internal AssistantSettings Settings = new AssistantSettings();
         internal AssistantView View;
         internal bool AutoHamster;
+        internal bool SpeedEnabled;
         internal bool Busy;
         internal string LastResult = "尚未执行。奖励均由游戏原版结算。";
         internal string Status = "准备就绪";
@@ -40,6 +41,10 @@ namespace DailyAssistant
         private string rawIdentity;
         private float nextMount;
         private float nextHit;
+        private bool speedSavePending;
+        private float speedSaveAt;
+        private int lastLoggedWaiterUnits = -1;
+        private int lastLoggedCustomerUnits = -1;
         private readonly AppearanceDelay appearanceDelay = new AppearanceDelay();
         private readonly Dictionary<TMP_Text, Color> nativeHintColors = new Dictionary<TMP_Text, Color>();
         private bool originalBackground;
@@ -77,13 +82,17 @@ namespace DailyAssistant
             // 当前存档路径包含槽位名；统计另存于其父目录，切换槽位时仍按哈希键隔离。
             statePath = Path.Combine(Path.GetDirectoryName(GameWorld.GetCurrentSavePath()), "DailyAssistant", "state.json");
             LoadState();
+            SpeedValue.NormalizePreferences(Settings);
+            AutoHamster = Settings.AutoHamster;
+            SpeedEnabled = Settings.SpeedEnabled;
             harmony = new Harmony("DailyAssistant.Local.1");
             harmony.PatchAll(typeof(ModBehaviour).Assembly);
             EventManager.Register("ENTER_MAIN_PANEL", OnLeave);
             EventManager.Register("GUEST_MODE_CHANGE", OnGuest);
             View = gameObject.AddComponent<AssistantView>();
             View.Owner = this;
-            Log("1.1.1已加载；原版答题提示使用控件颜色；支持悬浮答案及2秒击打。");
+            SetBackground(AutoHamster);
+            Log("1.2.0已加载；初次安装各项默认关闭，已有功能开关与移动倍率按保存设置恢复。");
         }
 
         protected override void OnBeforeDeactivate()
@@ -94,6 +103,7 @@ namespace DailyAssistant
             job = null;
             Busy = false;
             AutoHamster = false;
+            SpeedEnabled = false;
             SetBackground(false);
             if (harmony != null) harmony.UnpatchAll(harmony.Id);
             EventManager.Unregister("ENTER_MAIN_PANEL", OnLeave);
@@ -134,10 +144,16 @@ namespace DailyAssistant
                     if (CanPlay(controller)) HitCurrent(controller);
                 }
                 if (View != null) View.Tick();
+                if (speedSavePending && Time.unscaledTime >= speedSaveAt)
+                {
+                    speedSaveAt = Time.unscaledTime + 2f;
+                    SaveState();
+                }
             }
             catch (Exception ex)
             {
                 AutoHamster = false;
+                SpeedEnabled = false;
                 cancelJob = true;
                 SetBackground(Busy);
                 Status = "已暂停：" + CleanError(ex);
@@ -233,9 +249,63 @@ namespace DailyAssistant
         {
             if (Busy) return;
             AutoHamster = !AutoHamster;
+            Settings.AutoHamster = AutoHamster;
+            SaveState();
             SetBackground(AutoHamster);
             Status = AutoHamster ? "自动打地鼠已开启，等待自然刷新" : "自动打地鼠已关闭";
             View.Refresh();
+        }
+
+        internal void ToggleSpeed()
+        {
+            if (!Ready()) return;
+            SpeedEnabled = !SpeedEnabled;
+            Settings.SpeedEnabled = SpeedEnabled;
+            SaveState();
+            lastLoggedWaiterUnits = lastLoggedCustomerUnits = -1;
+            Status = SpeedEnabled ? "移动速度微调已开启" : "移动速度微调已关闭，恢复原版速度";
+            if (View != null) View.SyncSpeedEditors();
+            Log(Status);
+        }
+
+        internal void SetSpeedUnits(bool waiter, int units)
+        {
+            if (!SpeedEnabled || !Ready() || !SpeedValue.IsValid(units)) return;
+            if (waiter) Settings.WaiterSpeedUnits = units; else Settings.CustomerSpeedUnits = units;
+            speedSavePending = true;
+            speedSaveAt = Time.unscaledTime + .5f;
+            if (View != null) View.SyncSpeedEditors();
+        }
+
+        internal float ScaleMovement(float original, Npc npc)
+        {
+            if (!SpeedEnabled || npc == null || !Ready()) return original;
+            if (npc.m_eNpcType == NpcType.Waiter)
+            {
+                if (lastLoggedWaiterUnits != Settings.WaiterSpeedUnits)
+                {
+                    lastLoggedWaiterUnits = Settings.WaiterSpeedUnits;
+                    Log("服务员移动倍率已生效：" + SpeedValue.Format(Settings.WaiterSpeedUnits) + "倍。");
+                }
+                return SpeedValue.Multiply(original, Settings.WaiterSpeedUnits);
+            }
+            if (npc.m_eNpcType == NpcType.Customer || npc.m_eNpcType == NpcType.PalcoCustomer)
+            {
+                if (lastLoggedCustomerUnits != Settings.CustomerSpeedUnits)
+                {
+                    lastLoggedCustomerUnits = Settings.CustomerSpeedUnits;
+                    Log("客人移动倍率已生效：" + SpeedValue.Format(Settings.CustomerSpeedUnits) + "倍。");
+                }
+                return SpeedValue.Multiply(original, Settings.CustomerSpeedUnits);
+            }
+            return original;
+        }
+
+        internal void DisableSpeedAfterError(Exception ex)
+        {
+            SpeedEnabled = false;
+            Status = "速度微调已停止：" + CleanError(ex);
+            LogError(ex);
         }
 
         internal void SetBackground(bool enabled)
@@ -593,6 +663,7 @@ namespace DailyAssistant
                 File.WriteAllText(temp, JsonConvert.SerializeObject(Settings, Formatting.Indented), new UTF8Encoding(false));
                 if (File.Exists(statePath)) File.Replace(temp, statePath, statePath + ".bak");
                 else File.Move(temp, statePath);
+                speedSavePending = false;
             }
             catch (Exception ex) { LogError(ex); Status = "功能可用，但统计文件保存失败"; }
         }

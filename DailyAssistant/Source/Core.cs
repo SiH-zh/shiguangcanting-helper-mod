@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace DailyAssistant
 {
@@ -9,7 +11,46 @@ namespace DailyAssistant
     {
         public int Schema = 1;
         public bool QuizHints;
+        public bool AutoHamster;
+        public bool SpeedEnabled;
+        public int WaiterSpeedUnits = 10;
+        public int CustomerSpeedUnits = 10;
         public List<DailyRecord> Records = new List<DailyRecord>();
+    }
+
+    public static class SpeedValue
+    {
+        public const int Minimum = 10;
+        public const int Maximum = 100;
+        private static readonly Regex Number = new Regex(@"^(?:[1-9]|10)(?:\.[0-9]0*)?$", RegexOptions.CultureInvariant);
+
+        public static bool IsValid(int units) { return units >= Minimum && units <= Maximum; }
+        public static string Format(int units) { return (units / 10m).ToString("F1", CultureInfo.InvariantCulture); }
+
+        public static bool TryParse(string text, out int units)
+        {
+            units = Minimum;
+            if (text == null) return false;
+            text = text.Trim();
+            if (text.Length > 32 || !Number.IsMatch(text)) return false;
+            decimal value;
+            if (!decimal.TryParse(text, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out value)
+                || value < 1m || value > 10m || decimal.Truncate(value * 10m) != value * 10m) return false;
+            units = (int)(value * 10m);
+            return IsValid(units);
+        }
+
+        public static float Multiply(float original, int units)
+        {
+            return IsValid(units) ? original * (units / 10f) : original;
+        }
+
+        public static void NormalizePreferences(AssistantSettings settings)
+        {
+            // 初装的布尔值默认关闭；已有开关状态原样保留，只修正损坏的倍率。
+            if (!IsValid(settings.WaiterSpeedUnits)) settings.WaiterSpeedUnits = Minimum;
+            if (!IsValid(settings.CustomerSpeedUnits)) settings.CustomerSpeedUnits = Minimum;
+        }
     }
 
     [Serializable]

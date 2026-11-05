@@ -23,7 +23,7 @@ namespace DailyAssistant
     }
 
     // 只在标题栏拖动；正文的拖动仍留给滚动区。
-    public sealed class AnswerWindowDrag : MonoBehaviour, IBeginDragHandler, IDragHandler
+    public sealed class FloatingWindowDrag : MonoBehaviour, IBeginDragHandler, IDragHandler
     {
         internal RectTransform Target;
         internal RectTransform CanvasRect;
@@ -80,6 +80,65 @@ namespace DailyAssistant
         private string floatingDate;
         private object floatingSaveData;
         private float nextFloatingRefresh;
+        private RectTransform floatingSpeed;
+        private SpeedPanel mainSpeedPanel;
+        private SpeedPanel floatingSpeedPanel;
+
+        private sealed class SpeedPanel
+        {
+            internal RectTransform Root;
+            internal Button Toggle;
+            internal TMP_Text ToggleText;
+            internal SpeedRow Waiter;
+            internal SpeedRow Customer;
+        }
+
+        private sealed class SpeedRow
+        {
+            internal RectTransform Root;
+            internal Slider Slider;
+            internal TMP_InputField Input;
+            internal TMP_Text Error;
+            internal bool Waiter;
+            internal AssistantView View;
+            private bool syncing;
+
+            internal void Slide(float value)
+            {
+                if (syncing || View.Owner == null || !View.Owner.SpeedEnabled) return;
+                Error.text = "";
+                View.Owner.SetSpeedUnits(Waiter, Mathf.RoundToInt(value));
+            }
+
+            internal void Commit(string text)
+            {
+                if (syncing || Root == null || !Root.gameObject.activeInHierarchy || View.Owner == null) return;
+                int units;
+                if (View.Owner.SpeedEnabled && SpeedValue.TryParse(text, out units))
+                {
+                    Error.text = "";
+                    View.Owner.SetSpeedUnits(Waiter, units);
+                    Input.SetTextWithoutNotify(SpeedValue.Format(units));
+                }
+                else
+                {
+                    int previous = Waiter ? View.Owner.Settings.WaiterSpeedUnits : View.Owner.Settings.CustomerSpeedUnits;
+                    Input.SetTextWithoutNotify(SpeedValue.Format(previous));
+                    if (View.Owner.SpeedEnabled) Error.text = "未应用：请输入1.0–10.0、间隔0.1的数值。";
+                }
+            }
+
+            internal void Sync(bool enabled, int units)
+            {
+                if (Root == null || !Root.gameObject.activeInHierarchy) return;
+                syncing = true;
+                Slider.interactable = enabled;
+                Input.interactable = enabled;
+                Slider.SetValueWithoutNotify(units);
+                if (!Input.isFocused) Input.SetTextWithoutNotify(SpeedValue.Format(units));
+                syncing = false;
+            }
+        }
 
         internal void Open()
         {
@@ -105,6 +164,8 @@ namespace DailyAssistant
         {
             if (modal != null) { CloseModal(); return true; }
             if (visible) { Close(); return true; }
+            if (floatingSpeed != null && (floatingAnswers == null || floatingSpeed.GetSiblingIndex() > floatingAnswers.GetSiblingIndex()))
+            { CloseFloatingSpeed(); return true; }
             if (floatingAnswers != null) { CloseFloatingAnswers(); return true; }
             return false;
         }
@@ -121,19 +182,20 @@ namespace DailyAssistant
         internal void CloseAll()
         {
             CloseFloatingAnswers();
+            CloseFloatingSpeed();
             Close();
         }
 
         private void UpdateEscRegistration()
         {
-            bool needed = visible || floatingAnswers != null;
+            bool needed = visible || floatingAnswers != null || floatingSpeed != null;
             if (needed && !registered) { UIManager.RegisterEscHandler(this); registered = true; }
             else if (!needed && registered) { UIManager.UnregisterEscHandler(this); registered = false; }
         }
 
         private void UpdateCanvasVisibility()
         {
-            if (canvasObject != null) canvasObject.SetActive(visible || floatingAnswers != null || (Owner != null && Owner.Busy));
+            if (canvasObject != null) canvasObject.SetActive(visible || floatingAnswers != null || floatingSpeed != null || (Owner != null && Owner.Busy));
         }
 
         internal void Tick()
@@ -146,6 +208,8 @@ namespace DailyAssistant
                 progress.text = Owner.BatchProgress;
             }
             else progress.gameObject.SetActive(false);
+            if (floatingSpeed != null && !Owner.Ready()) CloseFloatingSpeed();
+            SyncSpeedEditors();
             if (floatingAnswers != null)
             {
                 if (!Owner.Ready() || !Owner.Settings.QuizHints || floatingDate != TimeHelper.GetTodayDateString()
@@ -167,6 +231,8 @@ namespace DailyAssistant
 
         private string StateSignature()
         {
+            // 速度页面只同步控件值；不因答题或地鼠进度变化销毁正在编辑的输入框。
+            if (tab == 2) return "速度|" + TimeHelper.GetTodayDateString() + "|" + Owner.Busy;
             return tab + "|" + TimeHelper.GetTodayDateString() + "|" + Owner.Settings.QuizHints + "|"
                 + Owner.AutoHamster + "|" + Owner.Busy + "|" + QuizManager.GetTodayAnsweredCount()
                 + "|" + HamsterManager.GetSuccessIndex() + "|" + HamsterManager.GetBoardTeeth();
@@ -211,12 +277,13 @@ namespace DailyAssistant
             panelBlock.transition = Selectable.Transition.None;
             panelBlock.targetGraphic = panel.GetComponent<Image>();
             Label(panel, "日常助手", 34, 30, 700, 54, 34, ink, TextAlignmentOptions.Left);
-            Label(panel, "1.1.1  ·  今日答题与地鼠小帮手", 36, 86, 740, 32, 19, new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
+            Label(panel, "1.2.0  ·  答题 · 地鼠 · 移动速度", 36, 86, 740, 32, 19, new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
             ActionButton(panel, "关闭", 830, 36, 114, 48, false, Close);
             status = Label(panel, "", 36, 126, 900, 32, 18, ink, TextAlignmentOptions.Left);
-            ActionButton(panel, "今日答题", 36, 170, 194, 52, true, delegate { tab = 0; Refresh(); });
-            ActionButton(panel, "打地鼠", 242, 170, 194, 52, true, delegate { tab = 1; Refresh(); });
-            Label(panel, "原版奖励 · 不重置每日次数", 520, 180, 414, 34, 18, new Color32(135, 106, 75, 255), TextAlignmentOptions.Right);
+            ActionButton(panel, "今日答题", 36, 170, 156, 52, true, delegate { tab = 0; Refresh(); });
+            ActionButton(panel, "打地鼠", 204, 170, 156, 52, true, delegate { tab = 1; Refresh(); });
+            ActionButton(panel, "移动速度", 372, 170, 184, 52, true, delegate { tab = 2; Refresh(); });
+            Label(panel, "开关与倍率会自动保存", 584, 180, 350, 34, 17, new Color32(135, 106, 75, 255), TextAlignmentOptions.Right);
             body = Rect("功能内容", panel);
             Place(body, 34, 236, 912, 526);
             progress = Label(canvasObject.transform, "", 0, 0, 1100, 48, 23, Color.white, TextAlignmentOptions.Center);
@@ -232,13 +299,15 @@ namespace DailyAssistant
             if (!visible || body == null || Owner == null || !Owner.Ready()) return;
             dirty = false;
             signature = StateSignature();
+            mainSpeedPanel = null;
             if (content != null) { content.SetActive(false); Destroy(content); }
             content = new GameObject("页面", typeof(RectTransform));
             content.transform.SetParent(body, false);
             Stretch((RectTransform)content.transform);
             if (Owner.Busy) BuildBusy(content.transform);
             else if (tab == 0) BuildQuiz(content.transform);
-            else BuildHamster(content.transform);
+            else if (tab == 1) BuildHamster(content.transform);
+            else BuildMovement(content.transform);
         }
 
         private void BuildBusy(Transform parent)
@@ -324,12 +393,12 @@ namespace DailyAssistant
                 floatingAnswers = Box("独立悬浮答案", canvasObject.transform, 0, 0, 450, 560,
                     panelSprite, new Color32(255, 248, 224, 255));
                 floatingAnswers.anchorMin = floatingAnswers.anchorMax = floatingAnswers.pivot = new Vector2(1, 1);
-                floatingAnswers.anchoredPosition = new Vector2(-26, -170);
+                floatingAnswers.anchoredPosition = new Vector2(floatingSpeed == null ? -26 : -(floatingSpeed.rect.width + 52), -170);
                 var header = Rect("可拖动标题栏", floatingAnswers);
                 Place(header, 14, 10, 332, 44);
                 Image(header, null, new Color(1, 1, 1, .01f));
                 Label(header, "今日待答 · 悬浮答案", 6, 0, 322, 44, 23, ink, TextAlignmentOptions.Left);
-                var drag = header.gameObject.AddComponent<AnswerWindowDrag>();
+                var drag = header.gameObject.AddComponent<FloatingWindowDrag>();
                 drag.Target = floatingAnswers;
                 drag.CanvasRect = canvasObject.transform as RectTransform;
                 ActionButton(floatingAnswers, "关闭", 354, 14, 78, 40, false, CloseFloatingAnswers);
@@ -414,6 +483,138 @@ namespace DailyAssistant
             }
             floatingRows.sizeDelta = new Vector2(0, y);
             floatingRows.anchoredPosition = Vector2.zero;
+        }
+
+        private void BuildMovement(Transform parent)
+        {
+            var panel = new SpeedPanel { Root = parent as RectTransform };
+            panel.Toggle = ActionButton(parent, "", 8, 0, 292, 52, Owner.SpeedEnabled, Owner.ToggleSpeed);
+            panel.ToggleText = panel.Toggle.GetComponentInChildren<TMP_Text>();
+            Label(parent, "范围1.0–10.0倍，步长0.1。\n关闭开关即使用原版移动速度。", 334, 0, 554, 58, 20, ink, TextAlignmentOptions.TopLeft);
+            panel.Waiter = BuildSpeedRow(parent, "服务员移动速度", true, 4, 82, 902);
+            panel.Customer = BuildSpeedRow(parent, "客人移动速度", false, 4, 264, 902);
+            ActionButton(parent, "悬浮速度调整", 12, 454, 296, 58, false, OpenFloatingSpeed);
+            Label(parent, "拖动滑块实时生效；输入后按回车或离开输入框应用。\n客人倍率同时适用于普通客人和包房客人。", 338, 456, 550, 60, 18, ink, TextAlignmentOptions.TopLeft);
+            mainSpeedPanel = panel;
+            SyncSpeedEditors();
+        }
+
+        private SpeedRow BuildSpeedRow(Transform parent, string title, bool waiter, float x, float y, float width)
+        {
+            var card = Box(title, parent, x, y, width, 170, cardSprite, new Color32(244, 231, 199, 255));
+            Label(card, title, 18, 12, width - 36, 36, width < 600 ? 22 : 25, ink, TextAlignmentOptions.Left);
+            var row = new SpeedRow { Root = card, Waiter = waiter, View = this };
+            var sliderRect = Rect("移动倍率滑块", card);
+            Place(sliderRect, 20, 62, width - 214, 36);
+            Image(sliderRect, null, new Color(1, 1, 1, .005f));
+            var track = Rect("滑轨", sliderRect); Stretch(track);
+            track.offsetMin = new Vector2(6, 12); track.offsetMax = new Vector2(-6, -12);
+            Image(track, null, new Color32(205, 184, 142, 255)).raycastTarget = false;
+            var fillArea = Rect("填充范围", sliderRect); Stretch(fillArea);
+            fillArea.offsetMin = new Vector2(10, 12); fillArea.offsetMax = new Vector2(-10, -12);
+            var fill = Rect("当前倍率", fillArea); Stretch(fill);
+            Image(fill, null, new Color32(127, 174, 67, 255)).raycastTarget = false;
+            var handleArea = Rect("滑块范围", sliderRect); Stretch(handleArea);
+            handleArea.offsetMin = new Vector2(12, 0); handleArea.offsetMax = new Vector2(-12, 0);
+            var handle = Rect("滑块", handleArea);
+            handle.anchorMin = handle.anchorMax = new Vector2(0, .5f); handle.pivot = new Vector2(.5f, .5f);
+            handle.sizeDelta = new Vector2(26, 34);
+            var handleImage = Image(handle, confirmSprite, confirmSprite == null ? (Color)new Color32(249, 205, 72, 255) : Color.white);
+            var slider = sliderRect.gameObject.AddComponent<Slider>();
+            slider.fillRect = fill; slider.handleRect = handle; slider.targetGraphic = handleImage;
+            slider.direction = Slider.Direction.LeftToRight;
+            slider.minValue = SpeedValue.Minimum; slider.maxValue = SpeedValue.Maximum; slider.wholeNumbers = true;
+            var navigation = slider.navigation; navigation.mode = Navigation.Mode.None; slider.navigation = navigation;
+            row.Slider = slider;
+            row.Input = SpeedInput(card, width - 174, 52, 124, 54);
+            Label(card, "倍", width - 42, 58, 28, 42, 20, ink, TextAlignmentOptions.Center);
+            Label(card, "1.0—10.0倍 · 每格0.1", 20, 102, width - 40, 26, 17, new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
+            row.Error = Label(card, "", 20, 132, width - 40, 28, 16, new Color32(173, 65, 44, 255), TextAlignmentOptions.Left);
+            slider.onValueChanged.AddListener(row.Slide);
+            row.Input.onEndEdit.AddListener(row.Commit);
+            return row;
+        }
+
+        private TMP_InputField SpeedInput(Transform parent, float x, float y, float width, float height)
+        {
+            var box = Rect("倍率数值输入", parent); Place(box, x, y, width, height);
+            var background = Image(box, panelSprite, panelSprite == null ? (Color)new Color32(255, 250, 232, 255) : Color.white);
+            var viewport = Rect("输入文字范围", box); Stretch(viewport);
+            viewport.offsetMin = new Vector2(8, 6); viewport.offsetMax = new Vector2(-8, -6);
+            viewport.gameObject.AddComponent<RectMask2D>();
+            var label = Label(viewport, "1.0", 0, 0, width - 16, height - 12, 24, ink, TextAlignmentOptions.Center);
+            Stretch(label.rectTransform);
+            var field = box.gameObject.AddComponent<TMP_InputField>();
+            field.targetGraphic = background;
+            field.textViewport = viewport;
+            field.textComponent = label;
+            field.contentType = TMP_InputField.ContentType.Standard;
+            field.lineType = TMP_InputField.LineType.SingleLine;
+            field.characterLimit = 32;
+            field.richText = false;
+            field.customCaretColor = true; field.caretColor = ink; field.caretWidth = 2;
+            field.selectionColor = new Color(.79f, .69f, .43f, .45f);
+            field.SetTextWithoutNotify("1.0");
+            return field;
+        }
+
+        internal void SyncSpeedEditors()
+        {
+            if (Owner == null) return;
+            SyncSpeedPanel(mainSpeedPanel);
+            SyncSpeedPanel(floatingSpeedPanel);
+        }
+
+        private void SyncSpeedPanel(SpeedPanel panel)
+        {
+            if (panel == null || panel.Root == null || !panel.Root.gameObject.activeInHierarchy) return;
+            bool enabled = Owner.SpeedEnabled;
+            panel.ToggleText.text = enabled ? "速度微调：已开启" : "速度微调：已关闭";
+            var image = panel.Toggle.GetComponent<Image>();
+            image.sprite = enabled ? confirmSprite : cancelSprite;
+            panel.Waiter.Sync(enabled, Owner.Settings.WaiterSpeedUnits);
+            panel.Customer.Sync(enabled, Owner.Settings.CustomerSpeedUnits);
+        }
+
+        internal void OpenFloatingSpeed()
+        {
+            if (destroyed || Owner == null || !Owner.Ready()) return;
+            if (canvasObject == null) Build();
+            if (floatingSpeed == null)
+            {
+                floatingSpeed = Box("独立悬浮速度调整", canvasObject.transform, 0, 0, 540, 532,
+                    panelSprite, new Color32(255, 248, 224, 255));
+                floatingSpeed.anchorMin = floatingSpeed.anchorMax = floatingSpeed.pivot = new Vector2(1, 1);
+                floatingSpeed.anchoredPosition = new Vector2(floatingAnswers == null ? -26 : -(floatingAnswers.rect.width + 52), -170);
+                var header = Rect("速度标题栏", floatingSpeed); Place(header, 14, 10, 414, 44);
+                Image(header, null, new Color(1, 1, 1, .01f));
+                Label(header, "移动速度 · 悬浮调整", 6, 0, 402, 44, 24, ink, TextAlignmentOptions.Left);
+                var drag = header.gameObject.AddComponent<FloatingWindowDrag>();
+                drag.Target = floatingSpeed; drag.CanvasRect = canvasObject.transform as RectTransform;
+                ActionButton(floatingSpeed, "关闭", 442, 14, 78, 40, false, CloseFloatingSpeed);
+                var panel = new SpeedPanel { Root = floatingSpeed };
+                panel.Toggle = ActionButton(floatingSpeed, "", 18, 66, 300, 44, Owner.SpeedEnabled, Owner.ToggleSpeed);
+                panel.ToggleText = panel.Toggle.GetComponentInChildren<TMP_Text>();
+                panel.Waiter = BuildSpeedRow(floatingSpeed, "服务员移动速度", true, 18, 124, 504);
+                panel.Customer = BuildSpeedRow(floatingSpeed, "客人移动速度", false, 18, 304, 504);
+                Label(floatingSpeed, "拖动标题栏可移动 · 关闭小窗保留本次开关状态", 20, 492, 500, 26, 15,
+                    new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
+                floatingSpeedPanel = panel;
+            }
+            floatingSpeed.SetAsLastSibling();
+            Close();
+            SyncSpeedEditors();
+            UpdateEscRegistration();
+            UpdateCanvasVisibility();
+        }
+
+        internal void CloseFloatingSpeed()
+        {
+            if (floatingSpeed != null) { floatingSpeed.gameObject.SetActive(false); Destroy(floatingSpeed.gameObject); }
+            floatingSpeed = null;
+            floatingSpeedPanel = null;
+            UpdateEscRegistration();
+            UpdateCanvasVisibility();
         }
 
         internal void Confirm(string title, string message, Action confirm)
