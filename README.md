@@ -8,6 +8,8 @@
 
 **当前版本：1.2.0** · [Steam创意工坊订阅（推荐）](https://steamcommunity.com/sharedfiles/filedetails/?id=3834109830) · [GitHub手动下载（备选）](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.2.0) · [历史发行版](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases) · [游戏Steam商店](https://store.steampowered.com/app/4399360/?l=schinese) · [MIT许可证中文对照](LICENSE.zh-CN.md)
 
+1.2版本已在Steam创意工坊发布，日常使用优先订阅工坊版；GitHub下载作为备选。
+
 ## 功能
 
 | 功能 | 使用方式 |
