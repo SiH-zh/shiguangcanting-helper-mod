@@ -6,7 +6,7 @@
 
 《时光餐厅》的非官方辅助模组，提供今日待答题与答案提示、答题辅助、地鼠自动击打和收益统计。支持独立悬浮答案。新增服务员与客人移动速度微调及悬浮调整框。
 
-**当前版本：1.2.0** · [本版下载](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.2.0) · [全部发行版](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases) · [游戏Steam商店](https://store.steampowered.com/app/4399360/?l=schinese) · [MIT许可证中文对照](LICENSE.zh-CN.md)
+**当前版本：1.2.0** · [Steam创意工坊订阅（推荐）](https://steamcommunity.com/sharedfiles/filedetails/?id=3834109830) · [GitHub手动下载（备选）](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.2.0) · [历史发行版](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases) · [游戏Steam商店](https://store.steampowered.com/app/4399360/?l=schinese) · [MIT许可证中文对照](LICENSE.zh-CN.md)
 
 ## 功能
 
@@ -23,15 +23,29 @@
 
 ## 安装与更新
 
-1. 完整退出游戏。
-2. 从本版本的发行页面下载`DailyAssistant-v版本号.zip`安装包并解压；日常使用无需下载平台自动生成的源码压缩包。
+### 首选：Steam创意工坊订阅安装（推荐）
+
+1. 完整退出游戏，打开[日常助手创意工坊页面](https://steamcommunity.com/sharedfiles/filedetails/?id=3834109830)，登录拥有《时光餐厅》的Steam账号并点击“订阅”。
+2. 等待Steam下载完成，再启动游戏。
+3. 在游戏主菜单的“模组”中勾选“日常助手：答题与打地鼠”；首次启用时阅读游戏显示的模组提示。
+4. 进入自己的餐厅，点击右上角、“我的餐厅”左侧的厨师帽地鼠入口。
+
+工坊订阅版由Steam管理下载与后续更新。更新完成后，请完整重启游戏以加载新版代码。
+
+如果此前手动安装过，请先退出游戏，将`游戏目录\Mods\DailyAssistant`移到`Mods`目录之外备份，再使用工坊版，避免同一模组从两个渠道重复加载。模组设置文件可保留。
+
+### 备选：GitHub手动下载安装
+
+需要指定历史版本，或无法通过工坊安装时，可使用[GitHub发行版](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases)。
+
+1. 完整退出游戏；若已订阅工坊版，先取消订阅并确认游戏仅保留一个安装来源。
+2. 下载所需版本的`DailyAssistant-v版本号.zip`安装包并解压；日常使用无需下载平台自动生成的源码压缩包。
 3. 将包内整个`DailyAssistant`文件夹放入游戏目录的`Mods`文件夹，最终结构应为`游戏目录\Mods\DailyAssistant\DailyAssistant.dll`。
-4. 启动游戏，在主菜单的“模组”中勾选“日常助手：答题与打地鼠”。首次启用时阅读游戏显示的模组提示。
-5. 进入自己的餐厅，点击右上角、“我的餐厅”左侧的助手入口。
+4. 启动游戏，在主菜单的“模组”中勾选“日常助手：答题与打地鼠”。
 
-更新时先退出游戏，备份旧模组目录，再用新版完整替换`DailyAssistant`文件夹；同一安装目录只保留一个版本，备份放在`Mods`目录之外。用户设置独立保存在`UserData\Current\DailyAssistant\state.json`，正常更新无需删除该文件。
+手动更新时先退出游戏，备份旧模组目录，再用新版完整替换`DailyAssistant`文件夹；备份放在`Mods`目录之外。用户设置独立保存在`UserData\Current\DailyAssistant\state.json`，正常更新或切换安装渠道无需删除该文件。
 
-停用时在模组列表取消勾选并完整重启游戏。更换动态库后也需完整重启，避免仍运行旧代码。旧版设置字段少，回退版本前建议备份模组自己的设置文件。
+停用时在模组列表取消勾选并完整重启游戏。更换动态库后也需完整重启，避免仍运行旧代码。回退旧版前建议备份模组自己的设置文件。
 
 
 ## 快速使用
@@ -81,10 +95,10 @@ docs/versions/         历史版本详情
 assets/icon.png        仓库展示图标
 ```
 
-详见[编译说明](docs/编译说明.md)。编译引用自己已安装游戏提供的程序集，仓库及发行包不包含游戏程序或用户存档。日常使用下载发行包即可，无需自行编译或安装额外加载器。
+详见[编译说明](docs/编译说明.md)。编译引用自己已安装游戏提供的程序集，仓库及发行包不包含游戏程序或用户存档。日常使用优先通过Steam创意工坊订阅安装，也可从GitHub发行版手动下载安装；无需自行编译或安装额外加载器。
 
 ## 许可证与相关项目
 
 本仓库自行编写的代码、文档和原创厨师帽地鼠图标使用[MIT许可证](LICENSE)，附[中文对照](LICENSE.zh-CN.md)。标准英文正文用于平台识别，中文对照便于阅读。游戏本体及第三方内容不属于本许可证授权范围，详见[第三方说明](第三方说明.md)。
 
-这是玩家制作的非官方模组。[《时光餐厅》游戏商店](https://store.steampowered.com/app/4399360/?l=schinese)由游戏开发者维护。本仓库的GitHub发行与Steam创意工坊发布相互独立；本次公开归档未上传或更新创意工坊。
+这是玩家制作的非官方模组。[《时光餐厅》游戏商店](https://store.steampowered.com/app/4399360/?l=schinese)由游戏开发者维护。日常安装推荐[Steam创意工坊订阅](https://steamcommunity.com/sharedfiles/filedetails/?id=3834109830)；本仓库提供源码、版本记录和备选手动安装包。
