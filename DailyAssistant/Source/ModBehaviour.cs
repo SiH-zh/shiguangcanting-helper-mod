@@ -14,8 +14,8 @@ using TMPro;
 
 [assembly: AssemblyTitle("时光餐厅日常助手")]
 [assembly: AssemblyDescription("今日待答题辅助与原版结算打地鼠")]
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 namespace DailyAssistant
 {
@@ -40,6 +40,7 @@ namespace DailyAssistant
         private string rawIdentity;
         private float nextMount;
         private float nextHit;
+        private readonly AppearanceDelay appearanceDelay = new AppearanceDelay();
         private bool originalBackground;
         private bool backgroundOwned;
         private bool stopped;
@@ -81,7 +82,7 @@ namespace DailyAssistant
             EventManager.Register("GUEST_MODE_CHANGE", OnGuest);
             View = gameObject.AddComponent<AssistantView>();
             View.Owner = this;
-            Log("1.0.1已加载；使用原创厨师帽地鼠图标；自动打地鼠默认关闭。");
+            Log("1.1.0已加载；支持独立悬浮答案；地鼠出现2秒后击打；自动打地鼠默认关闭。");
         }
 
         protected override void OnBeforeDeactivate()
@@ -122,6 +123,9 @@ namespace DailyAssistant
                     if (Ready()) EnsureContext();
                 }
                 if (entryButton != null) entryButton.interactable = !GameWorld.IsLoadingScene();
+                var observedController = HamsterSceneController.Instance;
+                var observed = observedController == null ? null : observedController.Current;
+                appearanceDelay.Observe(observed == null ? null : (object)observed, Time.time);
                 if (AutoHamster && !Busy && Ready() && Time.unscaledTime >= nextHit)
                 {
                     nextHit = Time.unscaledTime + .08f;
@@ -218,6 +222,7 @@ namespace DailyAssistant
         internal void ToggleHints()
         {
             Settings.QuizHints = !Settings.QuizHints;
+            if (!Settings.QuizHints && View != null) View.CloseFloatingAnswers();
             SaveState();
             RefreshNativeHints();
             View.Refresh();
@@ -327,7 +332,7 @@ namespace DailyAssistant
             string confirmDate = TimeHelper.GetTodayDateString();
             object confirmData = HamsterManager.GetSaveData();
             View.Confirm("一键完成今日地鼠？", "已完成 " + completed + " 次，剩余 " + remaining
-                + " 次。\n确认后将连续完成剩余次数。奖励、板牙和面具由游戏原版结算。\n过程中请留在自己的餐厅，可随时停止。", delegate
+                + " 次。\n每只地鼠出现2秒后击打，连续完成剩余次数。奖励、板牙和面具由原版结算。\n请留在自己的餐厅，可随时停止。", delegate
             {
                 if (!Ready() || confirmSave != ContextKey() || confirmDate != TimeHelper.GetTodayDateString()
                     || !ReferenceEquals(confirmData, HamsterManager.GetSaveData()))
@@ -367,7 +372,7 @@ namespace DailyAssistant
             jobInitialCount = hamster ? HamsterManager.GetSuccessIndex() : QuizManager.GetTodayAnsweredCount();
             jobTarget = hamster ? HamsterManager.GetDailyQuota() : QuizManager.GetTodayQuizCount();
             batchHits = 0; batchTeeth = 0; batchFull = 0; batchMasks.Clear();
-            View.Close();
+            View.CloseAll();
             if (!hamster) UIManager.Close<QuizPanel>();
             SetBackground(true);
             job = StartCoroutine(RunJob(hamster));
@@ -476,7 +481,19 @@ namespace DailyAssistant
         private void HitCurrent(HamsterSceneController controller)
         {
             var hamster = controller.Current;
-            if (hamster != null && hamster.IsInteractive) hamster.Event_OnMouseClick();
+            appearanceDelay.Observe(hamster == null ? null : (object)hamster, Time.time);
+            if (hamster == null || !hamster.IsInteractive || !appearanceDelay.CanHit(hamster, Time.time)) return;
+            // 满2秒后在同一帧完成所需点击，原版自行处理击败、奖励和消失。
+            int hits = Math.Min(hamster.RemainingHits, 1024);
+            Log("击打地鼠：出现后 " + appearanceDelay.ElapsedFor(hamster, Time.time).ToString("F3")
+                + " 秒；所需点击 " + hamster.RemainingHits + " 次。");
+            for (int i = 0; i < hits && hamster != null && controller.Current == hamster && hamster.IsInteractive; i++)
+                hamster.Event_OnMouseClick();
+        }
+
+        internal void OnHamsterAppeared(HamsterObject hamster)
+        {
+            appearanceDelay.Reset(hamster, Time.time);
         }
 
         private static void CancelScheduledSpawn(HamsterSceneController controller)
@@ -492,7 +509,7 @@ namespace DailyAssistant
             if (!Ready() || Busy) return;
             var pending = QuizManager.GetTodayQuizList();
             if (pending.Count == 0) { View.Notice("今日已答完", "今天已经没有待答题目。"); return; }
-            View.Close();
+            View.OpenFloatingAnswers();
             UIManager.Open<QuizPanel>(null).InitQuiz(pending, QuizManager.GetTodayAnsweredCount());
         }
 
@@ -527,8 +544,8 @@ namespace DailyAssistant
             Settings.QuizHints = old;
         }
 
-        private void OnLeave() { cancelJob = true; if (View != null) View.Close(); }
-        private void OnGuest(object value) { cancelJob = true; if (View != null) View.Close(); }
+        private void OnLeave() { cancelJob = true; appearanceDelay.Reset(null, Time.time); if (View != null) View.CloseAll(); }
+        private void OnGuest(object value) { cancelJob = true; appearanceDelay.Reset(null, Time.time); if (View != null) View.CloseAll(); }
 
         private void LoadState()
         {
@@ -564,6 +581,16 @@ namespace DailyAssistant
         }
         internal static void Log(string text) { Debug.Log("[日常助手] " + text); }
         internal static void LogError(Exception ex) { Debug.LogError("[日常助手] " + ex); }
+    }
+
+    [HarmonyPatch(typeof(HamsterObject), "Initialize")]
+    internal static class AppearancePatch
+    {
+        private static void Postfix(HamsterObject __instance, bool __result)
+        {
+            try { if (__result && ModBehaviour.Current != null) ModBehaviour.Current.OnHamsterAppeared(__instance); }
+            catch (Exception ex) { ModBehaviour.LogError(ex); }
+        }
     }
 
     [HarmonyPatch(typeof(QuizPanel), "ShowCurrentQuestion")]

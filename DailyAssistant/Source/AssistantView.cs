@@ -22,6 +22,31 @@ namespace DailyAssistant
         private void OnDisable() { hovering = false; transform.localScale = original; }
     }
 
+    // 只在标题栏拖动；正文的拖动仍留给滚动区。
+    public sealed class AnswerWindowDrag : MonoBehaviour, IBeginDragHandler, IDragHandler
+    {
+        internal RectTransform Target;
+        internal RectTransform CanvasRect;
+        private Vector2 pointerStart;
+        private Vector2 positionStart;
+        public void OnBeginDrag(PointerEventData e)
+        {
+            if (Target == null) return;
+            pointerStart = e.position;
+            positionStart = Target.anchoredPosition;
+        }
+        public void OnDrag(PointerEventData e)
+        {
+            if (Target == null || CanvasRect == null) return;
+            var canvas = CanvasRect.GetComponent<Canvas>();
+            float scale = canvas == null ? 1f : Math.Max(.01f, canvas.scaleFactor);
+            Vector2 point = positionStart + (e.position - pointerStart) / scale;
+            point.x = Mathf.Clamp(point.x, Math.Min(-12, -CanvasRect.rect.width + Target.rect.width + 12), -12);
+            point.y = Mathf.Clamp(point.y, Math.Min(-12, -CanvasRect.rect.height + Target.rect.height + 12), -12);
+            Target.anchoredPosition = point;
+        }
+    }
+
     public sealed class AssistantView : MonoBehaviour, IEscHandler
     {
         internal ModBehaviour Owner;
@@ -48,6 +73,13 @@ namespace DailyAssistant
         private bool destroyed;
         private Action modalConfirm;
         private GameObject content;
+        private RectTransform floatingAnswers;
+        private RectTransform floatingRows;
+        private TMP_Text floatingCount;
+        private string floatingSignature;
+        private string floatingDate;
+        private object floatingSaveData;
+        private float nextFloatingRefresh;
 
         internal void Open()
         {
@@ -56,7 +88,7 @@ namespace DailyAssistant
             visible = true;
             canvasObject.SetActive(true);
             root.gameObject.SetActive(true);
-            if (!registered) { UIManager.RegisterEscHandler(this); registered = true; }
+            UpdateEscRegistration();
             Refresh();
         }
 
@@ -65,25 +97,44 @@ namespace DailyAssistant
             visible = false;
             CloseModal();
             if (root != null) root.gameObject.SetActive(false);
-            if (registered) { UIManager.UnregisterEscHandler(this); registered = false; }
-            if (canvasObject != null && (Owner == null || !Owner.Busy)) canvasObject.SetActive(false);
+            UpdateEscRegistration();
+            UpdateCanvasVisibility();
         }
 
         public bool OnEscapePressed()
         {
-            if (!visible) return false;
-            if (modal != null) CloseModal(); else Close();
-            return true;
+            if (modal != null) { CloseModal(); return true; }
+            if (visible) { Close(); return true; }
+            if (floatingAnswers != null) { CloseFloatingAnswers(); return true; }
+            return false;
         }
 
         internal void Shutdown()
         {
             destroyed = true;
-            Close();
+            CloseAll();
             if (canvasObject != null) Destroy(canvasObject);
         }
 
         internal void MarkDirty() { dirty = true; }
+
+        internal void CloseAll()
+        {
+            CloseFloatingAnswers();
+            Close();
+        }
+
+        private void UpdateEscRegistration()
+        {
+            bool needed = visible || floatingAnswers != null;
+            if (needed && !registered) { UIManager.RegisterEscHandler(this); registered = true; }
+            else if (!needed && registered) { UIManager.UnregisterEscHandler(this); registered = false; }
+        }
+
+        private void UpdateCanvasVisibility()
+        {
+            if (canvasObject != null) canvasObject.SetActive(visible || floatingAnswers != null || (Owner != null && Owner.Busy));
+        }
 
         internal void Tick()
         {
@@ -95,8 +146,18 @@ namespace DailyAssistant
                 progress.text = Owner.BatchProgress;
             }
             else progress.gameObject.SetActive(false);
-            if (!visible) { if (!Owner.Busy) canvasObject.SetActive(false); return; }
-            if (!Owner.Ready()) { Close(); return; }
+            if (floatingAnswers != null)
+            {
+                if (!Owner.Ready() || !Owner.Settings.QuizHints || floatingDate != TimeHelper.GetTodayDateString()
+                    || !ReferenceEquals(floatingSaveData, QuizManager.GetSaveData())) CloseFloatingAnswers();
+                else if (Time.unscaledTime >= nextFloatingRefresh)
+                {
+                    nextFloatingRefresh = Time.unscaledTime + .5f;
+                    RefreshFloatingAnswers(false);
+                }
+            }
+            if (!visible) { UpdateCanvasVisibility(); return; }
+            if (!Owner.Ready()) { CloseAll(); return; }
             status.text = TimeHelper.GetNowTime().ToString("yyyy年M月d日") + "  ·  " + Owner.Status;
             if (Time.unscaledTime < nextRefresh && !dirty) return;
             nextRefresh = Time.unscaledTime + 1f;
@@ -150,7 +211,7 @@ namespace DailyAssistant
             panelBlock.transition = Selectable.Transition.None;
             panelBlock.targetGraphic = panel.GetComponent<Image>();
             Label(panel, "日常助手", 34, 30, 700, 54, 34, ink, TextAlignmentOptions.Left);
-            Label(panel, "1.0.1  ·  今日答题与地鼠小帮手", 36, 86, 740, 32, 19, new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
+            Label(panel, "1.1.0  ·  今日答题与地鼠小帮手", 36, 86, 740, 32, 19, new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
             ActionButton(panel, "关闭", 830, 36, 114, 48, false, Close);
             status = Label(panel, "", 36, 126, 900, 32, 18, ink, TextAlignmentOptions.Left);
             ActionButton(panel, "今日答题", 36, 170, 194, 52, true, delegate { tab = 0; Refresh(); });
@@ -203,6 +264,7 @@ namespace DailyAssistant
             {
                 Label(parent, "今日答题已完成", 60, 140, 780, 70, 32, ink, TextAlignmentOptions.Center);
                 Label(parent, "没有待答题目。明日刷新后再来看看。", 60, 220, 780, 60, 23, ink, TextAlignmentOptions.Center);
+                ActionButton(parent, "打开悬浮答案", 292, 350, 320, 58, false, OpenFloatingAnswers);
                 return;
             }
             var scroll = Scroll(parent, 4, 65, 900, 354);
@@ -228,8 +290,9 @@ namespace DailyAssistant
                 y += height;
             }
             scroll.sizeDelta = new Vector2(0, y);
-            ActionButton(parent, "自己答题（显示提示）", 20, 442, 354, 58, false, Owner.OpenNativeQuiz);
-            var auto = ActionButton(parent, "完成剩余答题", 510, 442, 364, 58, true, Owner.RequestQuizBatch);
+            ActionButton(parent, "悬浮答案", 8, 442, 282, 58, false, OpenFloatingAnswers);
+            ActionButton(parent, "自己答题", 306, 442, 282, 58, false, Owner.OpenNativeQuiz);
+            var auto = ActionButton(parent, "完成剩余答题", 604, 442, 282, 58, true, Owner.RequestQuizBatch);
             auto.interactable = pending.All(x => x != null);
         }
 
@@ -241,15 +304,116 @@ namespace DailyAssistant
             ActionButton(parent, "查看上次操作结果", 590, 0, 306, 44, false, delegate { Notice("上次操作结果", Owner.LastResult); });
             var first = Box("一键功能", parent, 4, 62, 902, 116, cardSprite, new Color32(244, 231, 199, 255));
             Label(first, "一键完成", 20, 12, 510, 35, 25, ink, TextAlignmentOptions.Left);
-            Label(first, "二次确认后连续完成剩余次数，结束显示本次收获。", 20, 54, 562, 48, 19, ink, TextAlignmentOptions.TopLeft);
+            Label(first, "二次确认后连续完成，每只出现2秒后击打。", 20, 54, 562, 48, 19, ink, TextAlignmentOptions.TopLeft);
             var batch = ActionButton(first, completed >= quota ? "今日已完成" : "完成剩余 " + (quota - completed) + " 次", 600, 28, 280, 58, true, Owner.RequestHamsterBatch);
             batch.interactable = completed < quota;
             var second = Box("自动功能", parent, 4, 190, 902, 120, cardSprite, new Color32(244, 231, 199, 255));
             Label(second, "自动打地鼠", 20, 12, 510, 35, 25, ink, TextAlignmentOptions.Left);
-            Label(second, "只击打自然刷出的地鼠。留在自己的餐厅营业即可。\n游戏运行时支持后台，关闭游戏或休眠后不工作。", 20, 51, 576, 60, 18, ink, TextAlignmentOptions.TopLeft);
+            Label(second, "自然刷出后等待2秒再击打，请留在自己的餐厅营业。\n游戏运行时支持后台，关闭游戏或休眠后不工作。", 20, 51, 576, 60, 18, ink, TextAlignmentOptions.TopLeft);
             ActionButton(second, Owner.AutoHamster ? "关闭自动击打" : "开启自动击打", 600, 30, 280, 58, !Owner.AutoHamster, Owner.ToggleAuto);
             var summary = Box("收益记录", parent, 4, 322, 902, 184, cardSprite, new Color32(250, 240, 216, 255));
             Label(summary, Owner.DailySummary(), 22, 12, 850, 154, 21, ink, TextAlignmentOptions.TopLeft);
+        }
+
+        internal void OpenFloatingAnswers()
+        {
+            if (destroyed || Owner == null || !Owner.Ready() || !Owner.Settings.QuizHints) return;
+            if (canvasObject == null) Build();
+            if (floatingAnswers == null)
+            {
+                floatingAnswers = Box("独立悬浮答案", canvasObject.transform, 0, 0, 450, 560,
+                    panelSprite, new Color32(255, 248, 224, 255));
+                floatingAnswers.anchorMin = floatingAnswers.anchorMax = floatingAnswers.pivot = new Vector2(1, 1);
+                floatingAnswers.anchoredPosition = new Vector2(-26, -170);
+                var header = Rect("可拖动标题栏", floatingAnswers);
+                Place(header, 14, 10, 332, 44);
+                Image(header, null, new Color(1, 1, 1, .01f));
+                Label(header, "今日待答 · 悬浮答案", 6, 0, 322, 44, 23, ink, TextAlignmentOptions.Left);
+                var drag = header.gameObject.AddComponent<AnswerWindowDrag>();
+                drag.Target = floatingAnswers;
+                drag.CanvasRect = canvasObject.transform as RectTransform;
+                ActionButton(floatingAnswers, "关闭", 354, 14, 78, 40, false, CloseFloatingAnswers);
+                floatingCount = Label(floatingAnswers, "", 20, 62, 410, 30, 18, ink, TextAlignmentOptions.Left);
+                floatingRows = Scroll(floatingAnswers, 14, 102, 422, 410);
+                Label(floatingAnswers, "拖动标题栏可移动 · 答题后自动更新", 20, 524, 410, 26, 16,
+                    new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
+                floatingDate = TimeHelper.GetTodayDateString();
+                floatingSaveData = QuizManager.GetSaveData();
+            }
+            floatingAnswers.SetAsLastSibling();
+            RefreshFloatingAnswers(true);
+            Close();
+            UpdateEscRegistration();
+            UpdateCanvasVisibility();
+            ModBehaviour.Log("已打开独立悬浮答案，主面板关闭后保持显示。");
+        }
+
+        internal void CloseFloatingAnswers()
+        {
+            if (floatingAnswers != null)
+            {
+                floatingAnswers.gameObject.SetActive(false);
+                Destroy(floatingAnswers.gameObject);
+            }
+            floatingAnswers = null;
+            floatingRows = null;
+            floatingCount = null;
+            floatingSaveData = null;
+            floatingSignature = null;
+            UpdateEscRegistration();
+            UpdateCanvasVisibility();
+        }
+
+        private void RefreshFloatingAnswers(bool force)
+        {
+            if (floatingAnswers == null || floatingRows == null) return;
+            var pending = QuizManager.GetTodayQuizList();
+            int answered = QuizManager.GetTodayAnsweredCount();
+            string current = TimeHelper.GetTodayDateString() + "|" + answered + "|"
+                + string.Join("|", pending.Select(q => q == null ? "未知" : q.nQuizID.ToString() + q.szQuestion + q.nCorrectIndex).ToArray());
+            if (!force && floatingSignature == current) return;
+            floatingSignature = current;
+            floatingCount.text = "尚有 " + pending.Count + " 道待答题，已答 " + answered + " 道";
+            for (int i = floatingRows.childCount - 1; i >= 0; i--)
+            {
+                var old = floatingRows.GetChild(i).gameObject;
+                old.SetActive(false);
+                Destroy(old);
+            }
+            if (pending.Count == 0)
+            {
+                Label(floatingRows, "今日答题已完成。\n没有待答题目。", 18, 30, 374, 110, 23, ink, TextAlignmentOptions.TopLeft);
+                floatingRows.sizeDelta = new Vector2(0, 140);
+                floatingRows.anchoredPosition = Vector2.zero;
+                return;
+            }
+            float y = 0;
+            for (int i = 0; i < pending.Count; i++)
+            {
+                var q = pending[i];
+                string question = q == null ? "题目不可用" : q.szQuestion;
+                string answer = "答案不可用";
+                if (q != null)
+                {
+                    var options = q.GetOptions();
+                    if (q.nCorrectIndex >= 0 && q.nCorrectIndex < options.Count)
+                        answer = ((char)('A' + q.nCorrectIndex)) + ". " + options[q.nCorrectIndex];
+                }
+                int questionLines = Math.Max(1, (question.Length + 18) / 19);
+                int answerLines = Math.Max(1, (answer.Length + 14) / 15);
+                float questionHeight = 28 + questionLines * 25;
+                float answerHeight = 12 + answerLines * 25;
+                float height = questionHeight + answerHeight + 28;
+                var card = Box("待答题及答案", floatingRows, 0, y, 410, height - 8, cardSprite,
+                    new Color32(244, 231, 199, 255));
+                Label(card, "第 " + (answered + i + 1) + " 题  " + Escape(question), 14, 10, 380, questionHeight,
+                    20, ink, TextAlignmentOptions.TopLeft);
+                Label(card, "正确答案：" + Escape(answer), 14, questionHeight + 8, 380, answerHeight,
+                    21, new Color32(60, 116, 52, 255), TextAlignmentOptions.TopLeft);
+                y += height;
+            }
+            floatingRows.sizeDelta = new Vector2(0, y);
+            floatingRows.anchoredPosition = Vector2.zero;
         }
 
         internal void Confirm(string title, string message, Action confirm)

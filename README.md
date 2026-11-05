@@ -4,9 +4,9 @@
 
 # 时光餐厅 · 日常助手
 
-《时光餐厅》的非官方辅助模组，提供今日待答题与答案提示、答题辅助、地鼠自动击打和收益统计。
+《时光餐厅》的非官方辅助模组，提供今日待答题与答案提示、答题辅助、地鼠自动击打和收益统计。支持独立悬浮答案。
 
-**当前版本：1.0.1** · [本版下载](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.0.1) · [全部发行版](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases) · [游戏Steam商店](https://store.steampowered.com/app/4399360/?l=schinese) · [MIT许可证中文对照](LICENSE.zh-CN.md)
+**当前版本：1.1.0** · [本版下载](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.1.0) · [全部发行版](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases) · [游戏Steam商店](https://store.steampowered.com/app/4399360/?l=schinese) · [MIT许可证中文对照](LICENSE.zh-CN.md)
 
 ## 功能
 
@@ -14,8 +14,9 @@
 | --- | --- |
 | 今日答题 | 查看当天尚未回答的题目及正确答案，支持自己答题或确认后自动完成剩余题目。 |
 | 一键完成地鼠 | 二次确认后连续完成当天剩余次数，汇总本次实际获得的板牙和面具等奖励。 |
-| 自动打地鼠 | 在自己的餐厅等待自然刷新，刷新后自动击打。 |
+| 自动打地鼠 | 在自己的餐厅等待自然刷新，出现2秒后自动击打。 |
 | 收益记录 | 按存档和日期记录实际结算收益，包含启用后手动击败的记录。 |
+| 悬浮答案 | 可独立拖动、关闭；自己答题时同步显示，答题后自动刷新。 |
 
 奖励和每日额度由原版流程处理。仅处理当天剩余题目或次数；今日收益无法追溯模组启用前缺失的记录。
 
@@ -36,7 +37,7 @@
 
 打开右上角、“我的餐厅”左侧的厨师帽地鼠入口，在对应页面手动启用需要的功能。
 
-- 答题：开启“答题辅助”，选择“自己答题”或“完成剩余答题”。
+- 答题：开启“答题辅助”，选择“自己答题”或“完成剩余答题”。可点击“悬浮答案”独立查看。
 - 地鼠：选择“一键完成”并确认，或开启“自动打地鼠”等待自然刷新。
 
 
@@ -48,6 +49,7 @@
 
 | 版本 | 主要变化 |
 | --- | --- |
+| [1.1.0](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.1.0) | 悬浮答案与2秒击打等待 |
 | [1.0.1](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.0.1) | 原创厨师帽地鼠图标 |
 | [1.0](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.0.0) | 首次发布：答题与打地鼠 |
 
@@ -57,11 +59,11 @@
 
 本项目针对2026年11月5日（北京时间）检查的Windows试玩版程序制作，游戏本地构建编号为`26431062`。游戏更新后相关接口可能变化，不保证兼容所有后续版本或同时修改相同逻辑的其他模组。
 
-尚无独立悬浮答案、2秒击打等待及移动速度调整。原版答题选项提示存在后续1.1.1修复的颜色标签显示及字体兼容问题。自动打地鼠每次启动默认关闭。
+原版答题窗口的选项提示可能直接显示颜色标签或缺字方框，1.1.1已修复；独立悬浮答案可用于查看答案。尚无移动速度调整，自动打地鼠每次启动默认关闭。
 
 游戏需保持运行。地鼠自动处理需满足自己的餐厅营业及原版场景条件，电脑休眠或游戏退出后不工作。游戏启用模组对成就或排行榜的处理以游戏自身提示为准。
 
-构建及隔离验证记录见[本版本详情](docs/versions/v1.0.1.md)。验证结果不等同于完整实机覆盖；遇到问题可提交[问题反馈](https://github.com/SiH-zh/shiguangcanting-helper-mod/issues)，附游戏版本、模组版本、操作步骤及相关日志，注意隐藏个人信息。
+构建及隔离验证记录见[本版本详情](docs/versions/v1.1.0.md)。验证结果不等同于完整实机覆盖；遇到问题可提交[问题反馈](https://github.com/SiH-zh/shiguangcanting-helper-mod/issues)，附游戏版本、模组版本、操作步骤及相关日志，注意隐藏个人信息。
 
 ## 源码与编译
 

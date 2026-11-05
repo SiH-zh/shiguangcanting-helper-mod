@@ -71,4 +71,33 @@ namespace DailyAssistant
             return expectedIndex == actualIndex && remaining > 0;
         }
     }
+
+    // 只控制模组何时发起点击，不拦截玩家手动点击，也不改变原版存活时间。
+    public sealed class AppearanceDelay
+    {
+        public const double Seconds = 2.0;
+        private object subject;
+        private double appearedAt;
+
+        public void Reset(object current, double now)
+        {
+            subject = current;
+            appearedAt = now;
+        }
+
+        public void Observe(object current, double now)
+        {
+            if (!ReferenceEquals(subject, current) || now < appearedAt) Reset(current, now);
+        }
+
+        public bool CanHit(object current, double now)
+        {
+            return ElapsedFor(current, now) >= Seconds;
+        }
+
+        public double ElapsedFor(object current, double now)
+        {
+            return current != null && ReferenceEquals(subject, current) ? now - appearedAt : double.NegativeInfinity;
+        }
+    }
 }
