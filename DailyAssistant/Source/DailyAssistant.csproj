@@ -15,6 +15,7 @@
     <Compile Include="Core.cs" />
     <Compile Include="ModBehaviour.cs" />
     <Compile Include="AssistantView.cs" />
+    <Compile Include="BodyTypography.cs" />
     <Compile Include="MovementPatch.cs" />
     <Reference Include="Assembly-CSharp"><HintPath>$(GameManagedDir)Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="0Harmony"><HintPath>$(GameManagedDir)0Harmony.dll</HintPath><Private>false</Private></Reference>

@@ -172,10 +172,16 @@ namespace DailyAssistant
 
         internal void Shutdown()
         {
+            if (destroyed) return;
             destroyed = true;
             CloseAll();
             if (canvasObject != null) Destroy(canvasObject);
+            if (fontMaterial != null) Destroy(fontMaterial);
+            fontMaterial = null;
+            font = null;
         }
+
+        private void OnDestroy() { Shutdown(); }
 
         internal void MarkDirty() { dirty = true; }
 
@@ -240,9 +246,10 @@ namespace DailyAssistant
 
         private void FindTheme()
         {
-            var text = Resources.FindObjectsOfTypeAll<TMP_Text>().FirstOrDefault(x => x.font != null && x.gameObject.scene.IsValid());
-            if (text != null) { font = text.font; fontMaterial = text.fontSharedMaterial; }
-            else font = TMP_Settings.defaultFontAsset;
+            font = BodyTypography.SelectFont(Resources.FindObjectsOfTypeAll<TMP_FontAsset>());
+            if (fontMaterial != null) Destroy(fontMaterial);
+            fontMaterial = BodyTypography.CreateMaterial(font);
+            ModBehaviour.Log("正文字体=" + font.name + "；使用独立材质，正文常规字重，保留按钮颜色状态。");
             Sprite[] sprites = Resources.FindObjectsOfTypeAll<Sprite>();
             panelSprite = sprites.FirstOrDefault(x => x.name == "Tooltip_Bg");
             cardSprite = sprites.FirstOrDefault(x => x.name == "time_tips_bg");
@@ -277,7 +284,7 @@ namespace DailyAssistant
             panelBlock.transition = Selectable.Transition.None;
             panelBlock.targetGraphic = panel.GetComponent<Image>();
             Label(panel, "日常助手", 34, 30, 700, 54, 34, ink, TextAlignmentOptions.Left);
-            Label(panel, "1.2.0  ·  答题 · 地鼠 · 移动速度", 36, 86, 740, 32, 19, new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
+            Label(panel, "1.2.1  ·  答题 · 地鼠 · 移动速度", 36, 86, 740, 32, 19, new Color32(146, 111, 74, 255), TextAlignmentOptions.Left);
             ActionButton(panel, "关闭", 830, 36, 114, 48, false, Close);
             status = Label(panel, "", 36, 126, 900, 32, 18, ink, TextAlignmentOptions.Left);
             ActionButton(panel, "今日答题", 36, 170, 156, 52, true, delegate { tab = 0; Refresh(); });
@@ -691,8 +698,7 @@ namespace DailyAssistant
         {
             var rect = Rect("文字", parent); Place(rect, x, y, w, h);
             var label = rect.gameObject.AddComponent<TextMeshProUGUI>();
-            if (font != null) label.font = font;
-            if (fontMaterial != null) label.fontSharedMaterial = fontMaterial;
+            BodyTypography.Apply(label, font, fontMaterial);
             label.text = text; label.fontSize = size; label.color = color; label.alignment = alignment;
             label.raycastTarget = false; label.richText = true;
             label.enableWordWrapping = true;

@@ -14,8 +14,8 @@ using TMPro;
 
 [assembly: AssemblyTitle("时光餐厅日常助手")]
 [assembly: AssemblyDescription("今日待答题辅助与原版结算打地鼠")]
-[assembly: AssemblyVersion("1.2.0.0")]
-[assembly: AssemblyFileVersion("1.2.0.0")]
+[assembly: AssemblyVersion("1.2.1.0")]
+[assembly: AssemblyFileVersion("1.2.1.0")]
 
 namespace DailyAssistant
 {
@@ -92,7 +92,7 @@ namespace DailyAssistant
             View = gameObject.AddComponent<AssistantView>();
             View.Owner = this;
             SetBackground(AutoHamster);
-            Log("1.2.0已加载；初次安装各项默认关闭，已有功能开关与移动倍率按保存设置恢复。");
+            Log("1.2.1已加载；初次安装各项默认关闭，已有功能开关与移动倍率按保存设置恢复。");
         }
 
         protected override void OnBeforeDeactivate()

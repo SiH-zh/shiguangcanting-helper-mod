@@ -6,9 +6,9 @@
 
 《时光餐厅》的非官方辅助模组，提供今日待答题与答案提示、答题辅助、地鼠自动击打和收益统计。支持独立悬浮答案。新增服务员与客人移动速度微调及悬浮调整框。
 
-**当前版本：1.2.0** · [Steam创意工坊订阅（推荐）](https://steamcommunity.com/sharedfiles/filedetails/?id=3834109830) · [GitHub手动下载（备选）](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.2.0) · [历史发行版](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases) · [游戏Steam商店](https://store.steampowered.com/app/4399360/?l=schinese) · [MIT许可证中文对照](LICENSE.zh-CN.md)
+**当前版本：1.2.1** · [Steam创意工坊订阅（推荐）](https://steamcommunity.com/sharedfiles/filedetails/?id=3834109830) · [GitHub手动下载（备选）](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.2.1) · [历史发行版](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases) · [游戏Steam商店](https://store.steampowered.com/app/4399360/?l=schinese) · [MIT许可证中文对照](LICENSE.zh-CN.md)
 
-1.2版本已在Steam创意工坊发布，日常使用优先订阅工坊版；GitHub下载作为备选。
+1.2.1字体修复版已在Steam创意工坊发布，日常使用优先订阅工坊版；GitHub下载作为备选。
 
 ## 功能
 
@@ -22,6 +22,10 @@
 | 移动速度 | 服务员、普通及包房客人分组调整，1.0至10.0倍、步长0.1倍，支持滑块、输入和悬浮框。 |
 
 奖励和每日额度由原版流程处理。仅处理当天剩余题目或次数；今日收益无法追溯模组启用前缺失的记录。
+
+## 1.2.1字体修复
+
+修复界面偶发整页粗黑：固定中文正文字体，使用独立材质清除异常扩张、描边和阴影，保留原有按钮颜色状态。详情见[1.2.1更新说明](docs/versions/v1.2.1.md)。
 
 ## 安装与更新
 
@@ -66,6 +70,7 @@
 
 | 版本 | 主要变化 |
 | --- | --- |
+| [1.2.1](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.2.1) | 修复字体整页粗黑，固定正文字体与独立材质 |
 | [1.2.0](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.2.0) | 移动速度微调与设置记忆 |
 | [1.1.1](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.1.1) | 修复答题提示的颜色标签与缺字 |
 | [1.1.0](https://github.com/SiH-zh/shiguangcanting-helper-mod/releases/tag/v1.1.0) | 悬浮答案与2秒击打等待 |
@@ -76,13 +81,13 @@
 
 ## 适用范围与已知限制
 
-本项目针对2026年11月5日（北京时间）检查的Windows试玩版程序制作，游戏本地构建编号为`26431062`。游戏更新后相关接口可能变化，不保证兼容所有后续版本或同时修改相同逻辑的其他模组。
+本项目最近于2026年11月9日（北京时间）针对Windows试玩版程序检查，游戏本地构建编号为`26431062`。游戏更新后相关接口可能变化，不保证兼容所有后续版本或同时修改相同逻辑的其他模组。
 
-新增速度界面及移动表现已交由用户手动验证，目前没有完整实机复测结论。游戏更新相关接口后可能需要适配；不承诺兼容全部后续游戏版本或其他修改同一逻辑的模组。
+已确认工坊下载文件与本次修复程序一致，游戏日志显示1.2.1加载成功并使用固定中文正文及独立材质；这不等于全部场景和按钮状态都已完成目视复测。游戏更新相关接口后可能需要适配。
 
 游戏需保持运行。地鼠自动处理需满足自己的餐厅营业及原版场景条件，电脑休眠或游戏退出后不工作。游戏启用模组对成就或排行榜的处理以游戏自身提示为准。
 
-构建及隔离验证记录见[本版本详情](docs/versions/v1.2.0.md)。验证结果不等同于完整实机覆盖；遇到问题可提交[问题反馈](https://github.com/SiH-zh/shiguangcanting-helper-mod/issues)，附游戏版本、模组版本、操作步骤及相关日志，注意隐藏个人信息。
+构建及隔离验证记录见[本版本详情](docs/versions/v1.2.1.md)。验证结果不等同于完整实机覆盖；遇到问题可提交[问题反馈](https://github.com/SiH-zh/shiguangcanting-helper-mod/issues)，附游戏版本、模组版本、操作步骤及相关日志，注意隐藏个人信息。
 
 ## 源码与编译
 
